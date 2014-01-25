@@ -2,23 +2,22 @@
 #
 # Jekyll categories list plugin
 # http://www.ekynoxe.com/
-# Version: 0.0.1 (2014-01-18)
+# Version: 0.0.2 (2014-01-25)
 #
-# Copyright (c) 2014 Mathieu Davy - ekynoxe - http://ekkynoxe.com/
-# Licenced under the MIT licence
+# Copyright (c) 2014 Mathieu Davy - ekynoxe - http://ekynoxe.com/
+# Licensed under the MIT license
 # (http://www.opensource.org/licenses/mit-license.php)
 #
 # This plugin registers a liquid tag {% categories %} that will output
 # => a list of all categories your posts have in their YAML front matter
-# It is designed to work in conjunction with the categories generator
-# => from Dave Perrett at http://recursive-design.com/projects/jekyll-plugins/
 #
 # You can pass an optional argument that will be the syntax used to
 # => output each category item, with placeholders for the category name
 # => and a category link built from the site's configuration value from
-# => your _config.yml file as follows:
+# => your _config.yml file as one of those two syntaxes:
 #
-#       category_dir: /categories
+#       category_path: /categories
+#       category_path: /categories/:cat
 #
 # => The name place holder is [[name]]
 # => The link place holder is [[link]]
@@ -60,7 +59,9 @@ module Jekyll
     def render(context)
         out_list = []
         site = context.registers[:site]
-        category_dir = site.config['category_dir']
+        category_path = site.config['category_path']
+        # Ensuring leading slash on path
+        category_path = "/#{category_path}" unless category_path =~ /^\//
 
         # Sorting categories
         cats = site.categories.sort do |a, b|
@@ -70,9 +71,18 @@ module Jekyll
         cats.each do |cat, posts|
             cat_out = @syntax.dup
 
-            if @syntax.include? "[[link]]" and category_dir
-                category_dir = "/#{category_dir}" unless category_dir =~ /^\//
-                cat_out.gsub!(/\[\[link\]\]/, "#{category_dir}/#{cat}/")
+            if @syntax.include? "[[link]]" and category_path
+
+                # If the category_path contains the key ":cat",
+                # => perform a replacement
+                if category_path =~ /:cat\/?/
+                    cat_path = category_path.gsub(/:cat\/?/, cat)
+                    cat_out.gsub!(/\[\[link\]\]/, "#{cat_path}/")
+
+                # Otherwise simply append the category name
+                else
+                    cat_out.gsub!(/\[\[link\]\]/, "#{category_path}/#{cat}/")
+                end
             end
 
             if @syntax.include? "[[name]]"
